@@ -129,8 +129,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
   <div class="foot">Dados publicos EOIR - U.S. Department of Justice - Ferramenta nao afiliada ao governo dos EUA</div>
 </div>
 <script>
-const KEY='acis_v9';
-const BASE='https://dypyhsrjlzvkhdryeoky.supabase.co/functions/v1/lookup';
+const KEY='acis_v10';
+const BASE='/api/lookup';
 let C=JSON.parse(localStorage.getItem(KEY)||'[]');
 let running=false;
 const save=()=>localStorage.setItem(KEY,JSON.stringify(C));
@@ -153,6 +153,7 @@ const dtag=(d)=>{
 };
 
 const hcls=(d)=>d===null?'na':d<=7?'u':d<=30?'s':'ok';
+const wait=(ms)=>new Promise(r=>setTimeout(r,ms));
 
 function add(){
   const name=document.getElementById('fn').value.trim();
@@ -218,33 +219,40 @@ function log(msg,t){
   b.scrollTop=b.scrollHeight;
 }
 
-const wait=(ms)=>new Promise(r=>setTimeout(r,ms));
-
-async function queryClient(anum, nat, name) {
-  // Step 1: start captcha task
+async function queryClient(anum,nat,name){
+  // Etapa 1: inicia captcha
   log('Iniciando captcha para '+name+'...','info');
-  const startR = await fetch(BASE+'?action=start&alienNumber='+anum+'&nationality='+encodeURIComponent(nat));
-  const startD = await startR.json();
-  if(!startD.success || !startD.taskId) {
-    return {error: 'Captcha start failed: '+(startD.error||JSON.stringify(startD))};
-  }
-  const taskId = startD.taskId;
-  log('Captcha enviado (task '+taskId+'). Aguardando resolucao...','wait');
+  let startD;
+  try{
+    const r=await fetch(BASE+'?action=start&alienNumber='+anum+'&nationality='+encodeURIComponent(nat));
+    startD=await r.json();
+  }catch(e){return{error:'Erro de conexao: '+e.message};}
 
-  // Step 2: wait 20s then poll up to 5 times
+  if(!startD.success||!startD.taskId){
+    return{error:'Captcha start falhou: '+(startD.error||JSON.stringify(startD))};
+  }
+
+  const taskId=startD.taskId;
+  log('Captcha enviado (task '+taskId+'). Aguardando 20s...','wait');
+
+  // Etapa 2: aguarda 20s e tenta buscar resultado
   await wait(20000);
 
-  for(let i=0;i<5;i++){
-    const finR = await fetch(BASE+'?action=finish&taskId='+taskId+'&alienNumber='+anum+'&nationality='+encodeURIComponent(nat));
-    const finD = await finR.json();
+  for(let i=0;i<6;i++){
+    let finD;
+    try{
+      const r=await fetch(BASE+'?action=finish&taskId='+taskId+'&alienNumber='+anum+'&nationality='+encodeURIComponent(nat));
+      finD=await r.json();
+    }catch(e){return{error:'Erro ao buscar resultado: '+e.message};}
+
     if(finD.pending){
-      log('Ainda resolvendo... aguardando mais 5s','wait');
+      log('Ainda resolvendo... +5s ('+(i+1)+'/6)','wait');
       await wait(5000);
       continue;
     }
     return finD;
   }
-  return {error: 'Captcha timeout'};
+  return{error:'Timeout - captcha nao resolvido em 50s'};
 }
 
 async function runAll(){
@@ -253,15 +261,15 @@ async function runAll(){
   document.getElementById('rbtn').disabled=true;
   document.getElementById('pw').style.display='block';
   document.getElementById('lg').innerHTML='';
-  log('Iniciando consulta de '+C.length+' cliente(s)... (cada consulta leva ~25s)','info');
+  log('Iniciando '+C.length+' consulta(s). Cada uma leva ~25s...','info');
 
   for(let i=0;i<C.length;i++){
     C[i].status='loading';render();
     log('--- '+C[i].name+' (A-'+C[i].anum+') ---','info');
 
     let result=null;
-    try{ result = await queryClient(C[i].anum, C[i].nat, C[i].name); }
-    catch(e){ result={error:e.message}; }
+    try{result=await queryClient(C[i].anum,C[i].nat,C[i].name);}
+    catch(e){result={error:e.message};}
 
     C[i].checked=new Date().toLocaleDateString('pt-BR');
 
