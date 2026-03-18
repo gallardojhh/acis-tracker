@@ -65,8 +65,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .pt2{display:flex;justify-content:space-between;font-size:12px;color:var(--m);margin-bottom:5px}
 .pbar{height:3px;background:var(--b);border-radius:2px;overflow:hidden}
 .pfill{height:100%;background:linear-gradient(90deg,var(--a2),var(--a));width:0%;transition:width .4s}
-.log{font-family:'DM Mono',monospace;font-size:11px;color:var(--m);background:#07090d;border-radius:8px;padding:10px 12px;max-height:100px;overflow-y:auto;margin-top:10px;line-height:1.9}
-.log .ok{color:var(--a2)}.log .err{color:var(--d)}.log .info{color:var(--a)}
+.log{font-family:'DM Mono',monospace;font-size:11px;color:var(--m);background:#07090d;border-radius:8px;padding:10px 12px;max-height:120px;overflow-y:auto;margin-top:10px;line-height:1.9}
+.log .ok{color:var(--a2)}.log .err{color:var(--d)}.log .info{color:var(--a)}.log .wait{color:var(--w)}
 .foot{font-size:11px;color:var(--m);text-align:center;padding-top:1.5rem;line-height:1.8;border-top:1px solid var(--b);margin-top:.5rem}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 .blink{animation:pulse .9s ease-in-out infinite}
@@ -129,8 +129,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
   <div class="foot">Dados publicos EOIR - U.S. Department of Justice - Ferramenta nao afiliada ao governo dos EUA</div>
 </div>
 <script>
-const KEY='acis_v8';
-const SUPABASE='https://dypyhsrjlzvkhdryeoky.supabase.co/functions/v1/lookup';
+const KEY='acis_v9';
+const BASE='https://dypyhsrjlzvkhdryeoky.supabase.co/functions/v1/lookup';
 let C=JSON.parse(localStorage.getItem(KEY)||'[]');
 let running=false;
 const save=()=>localStorage.setItem(KEY,JSON.stringify(C));
@@ -205,9 +205,7 @@ function render(){
     return '<tr><td><strong>'+c.name+'</strong>'+(c.checked?'<div style="font-size:10px;color:var(--m)">'+c.checked+'</div>':'')+'</td>'+
       '<td><span style="font-family:monospace;color:var(--a);font-size:12px">'+c.anum+'</span></td>'+
       '<td style="font-size:12px">'+c.nat+'</td>'+
-      '<td>'+sb+'</td>'+
-      '<td>'+hc+'</td>'+
-      '<td>'+cc+'</td>'+
+      '<td>'+sb+'</td><td>'+hc+'</td><td>'+cc+'</td>'+
       '<td><div class="acts">'+wb+
       '<a class="bacis" href="https://acis.eoir.justice.gov/en/" target="_blank">ACIS</a>'+
       '<button class="bdel" onclick="del(\''+c.id+'\')">X</button></div></td></tr>';
@@ -220,23 +218,50 @@ function log(msg,t){
   b.scrollTop=b.scrollHeight;
 }
 
+const wait=(ms)=>new Promise(r=>setTimeout(r,ms));
+
+async function queryClient(anum, nat, name) {
+  // Step 1: start captcha task
+  log('Iniciando captcha para '+name+'...','info');
+  const startR = await fetch(BASE+'?action=start&alienNumber='+anum+'&nationality='+encodeURIComponent(nat));
+  const startD = await startR.json();
+  if(!startD.success || !startD.taskId) {
+    return {error: 'Captcha start failed: '+(startD.error||JSON.stringify(startD))};
+  }
+  const taskId = startD.taskId;
+  log('Captcha enviado (task '+taskId+'). Aguardando resolucao...','wait');
+
+  // Step 2: wait 20s then poll up to 5 times
+  await wait(20000);
+
+  for(let i=0;i<5;i++){
+    const finR = await fetch(BASE+'?action=finish&taskId='+taskId+'&alienNumber='+anum+'&nationality='+encodeURIComponent(nat));
+    const finD = await finR.json();
+    if(finD.pending){
+      log('Ainda resolvendo... aguardando mais 5s','wait');
+      await wait(5000);
+      continue;
+    }
+    return finD;
+  }
+  return {error: 'Captcha timeout'};
+}
+
 async function runAll(){
   if(running)return;
   running=true;
   document.getElementById('rbtn').disabled=true;
   document.getElementById('pw').style.display='block';
   document.getElementById('lg').innerHTML='';
-  log('Iniciando consulta de '+C.length+' cliente(s)...','info');
+  log('Iniciando consulta de '+C.length+' cliente(s)... (cada consulta leva ~25s)','info');
 
   for(let i=0;i<C.length;i++){
     C[i].status='loading';render();
-    log('Consultando A-'+C[i].anum+' ('+C[i].name+')...','info');
+    log('--- '+C[i].name+' (A-'+C[i].anum+') ---','info');
 
     let result=null;
-    try{
-      const r=await fetch(SUPABASE+'?alienNumber='+C[i].anum+'&nationality='+encodeURIComponent(C[i].nat));
-      if(r.ok)result=await r.json();
-    }catch(e){console.warn(e);}
+    try{ result = await queryClient(C[i].anum, C[i].nat, C[i].name); }
+    catch(e){ result={error:e.message}; }
 
     C[i].checked=new Date().toLocaleDateString('pt-BR');
 
@@ -251,11 +276,10 @@ async function runAll(){
       log('OK '+C[i].name+': '+result.hearingDate+' '+(result.hearingTime||''),'ok');
     }else if(result&&result.success&&result.found===false){
       C[i].status='notfound';
-      log('OK '+C[i].name+': Sem audiencia marcada no sistema','ok');
+      log('OK '+C[i].name+': Sem audiencia marcada','ok');
     }else{
       C[i].status='pending';
-      const info=result?JSON.stringify(result).slice(0,200):'sem resposta do servidor';
-      log('AVISO '+C[i].name+': '+info,'err');
+      log('ERRO '+C[i].name+': '+(result?.error||JSON.stringify(result)),'err');
     }
 
     const pct=Math.round(((i+1)/C.length)*100);
@@ -263,7 +287,6 @@ async function runAll(){
     document.getElementById('ppct').textContent=pct+'%';
     document.getElementById('plbl').textContent=(i+1)+'/'+C.length+' consultados';
     save();render();
-    await new Promise(r=>setTimeout(r,1000));
   }
 
   log('Concluido. '+C.filter(c=>c.hDate).length+' audiencia(s) encontrada(s).','ok');
