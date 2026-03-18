@@ -129,7 +129,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
   <div class="foot">Dados publicos EOIR - U.S. Department of Justice - Ferramenta nao afiliada ao governo dos EUA</div>
 </div>
 <script>
-const KEY='acis_v7';
+const KEY='acis_v8';
+const SUPABASE='https://dypyhsrjlzvkhdryeoky.supabase.co/functions/v1/lookup';
 let C=JSON.parse(localStorage.getItem(KEY)||'[]');
 let running=false;
 const save=()=>localStorage.setItem(KEY,JSON.stringify(C));
@@ -207,7 +208,8 @@ function render(){
       '<td>'+sb+'</td>'+
       '<td>'+hc+'</td>'+
       '<td>'+cc+'</td>'+
-      '<td><div class="acts">'+wb+'<a class="bacis" href="https://acis.eoir.justice.gov/en/" target="_blank">ACIS</a>'+
+      '<td><div class="acts">'+wb+
+      '<a class="bacis" href="https://acis.eoir.justice.gov/en/" target="_blank">ACIS</a>'+
       '<button class="bdel" onclick="del(\''+c.id+'\')">X</button></div></td></tr>';
   }).join('');
 }
@@ -232,7 +234,7 @@ async function runAll(){
 
     let result=null;
     try{
-      const r=await fetch('/api/lookup?alienNumber='+C[i].anum+'&nationality='+encodeURIComponent(C[i].nat));
+      const r=await fetch(SUPABASE+'?alienNumber='+C[i].anum+'&nationality='+encodeURIComponent(C[i].nat));
       if(r.ok)result=await r.json();
     }catch(e){console.warn(e);}
 
@@ -249,10 +251,10 @@ async function runAll(){
       log('OK '+C[i].name+': '+result.hearingDate+' '+(result.hearingTime||''),'ok');
     }else if(result&&result.success&&result.found===false){
       C[i].status='notfound';
-      log('OK '+C[i].name+': Sem audiencia marcada','ok');
+      log('OK '+C[i].name+': Sem audiencia marcada no sistema','ok');
     }else{
       C[i].status='pending';
-      const info=result?JSON.stringify(result).slice(0,150):'sem resposta';
+      const info=result?JSON.stringify(result).slice(0,200):'sem resposta do servidor';
       log('AVISO '+C[i].name+': '+info,'err');
     }
 
@@ -261,7 +263,7 @@ async function runAll(){
     document.getElementById('ppct').textContent=pct+'%';
     document.getElementById('plbl').textContent=(i+1)+'/'+C.length+' consultados';
     save();render();
-    await new Promise(r=>setTimeout(r,800));
+    await new Promise(r=>setTimeout(r,1000));
   }
 
   log('Concluido. '+C.filter(c=>c.hDate).length+' audiencia(s) encontrada(s).','ok');
