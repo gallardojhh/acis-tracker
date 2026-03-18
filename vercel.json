@@ -1,12 +1,11 @@
 {
   "version": 2,
-  "functions": {
-    "api/lookup.js": {
-      "runtime": "nodejs24.x"
-    }
-  },
+  "builds": [
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "api/lookup.js", "use": "@vercel/node" }
+  ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/api/lookup", "dest": "/api/lookup.js" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
