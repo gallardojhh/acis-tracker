@@ -14,7 +14,7 @@ module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { alienNumber, nationality, captchaToken } = req.query;
+  const { alienNumber, nationality } = req.query;
   if (!alienNumber || !nationality) return res.status(400).json({ error: 'Missing params' });
 
   const anum = String(alienNumber).replace(/\D/g, '').padStart(9, '0');
@@ -23,62 +23,68 @@ module.exports = async function handler(req, res) {
 
   return new Promise((resolve) => {
     const parsed = new URL(acisUrl);
-    const headers = {
-      'Accept': '*/*',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Origin': 'https://acis.eoir.justice.gov',
-      'Referer': 'https://acis.eoir.justice.gov/',
-      'Sec-Fetch-Dest': 'empty',
-      'Sec-Fetch-Mode': 'cors',
-      'Sec-Fetch-Site': 'same-site',
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    };
-
-    if (captchaToken) headers['Captcha-Token'] = captchaToken;
-
     const options = {
       hostname: parsed.hostname,
       path: parsed.pathname + parsed.search,
       method: 'GET',
-      headers,
+      headers: {
+        'Accept': '*/*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Origin': 'https://acis.eoir.justice.gov',
+        'Referer': 'https://acis.eoir.justice.gov/',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-site',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      },
     };
 
     const request = https.request(options, (response) => {
       let data = '';
       response.on('data', chunk => data += chunk);
       response.on('end', () => {
-        console.log('STATUS:', response.statusCode);
-        console.log('RAW:', data.slice(0, 500));
-        let parsed2;
-        try { parsed2 = JSON.parse(data); } catch { parsed2 = { raw: data }; }
+        console.log('ACIS STATUS:', response.statusCode);
+        console.log('ACIS RAW:', data.slice(0, 800));
 
-        if (!parsed2 || !parsed2.Data) {
-          return res.status(200).json({ success: false, status: response.statusCode, raw: data.slice(0, 500) });
-          resolve();
-          return;
+        let json;
+        try { json = JSON.parse(data); } catch { 
+          return res.status(200).json({ success: false, raw: data.slice(0, 500) }), resolve();
         }
 
-        const d = parsed2.Data;
-        const s = parsed2.Schedule;
+        const d = json.Data;
+        const s = json.Schedule;
 
-        const result = {
-          success: true,
-          name: d.AlienName,
-          hearingDate: s?.AdjDate ? new Date(s.AdjDate).toLocaleDateString('en-US') : null,
-          hearingTime: s?.AdjTime || null,
-          hearingType: s?.CalType === 'M' ? 'MASTER' : s?.CalType || null,
-          judge: s?.IJ_Name || null,
-          court: s?.HearingLocationAddress ? s.HearingLocationAddress.replace(/\|/g, ', ') : null,
-          medium: s?.HearingMedium === 'P' ? 'IN PERSON' : s?.HearingMedium || null,
+        if (!d || !d.ValidAlienNumber) {
+          return res.status(200).json({ success: true, found: false, message: 'A-Number not found' }), resolve();
+        }
+
+        const fmtDate = (iso) => {
+          if (!iso) return null;
+          const dt = new Date(iso);
+          return (dt.getMonth()+1) + '/' + dt.getDate() + '/' + dt.getFullYear();
         };
 
-        res.status(200).json(result);
+        const calTypes = { 'M': 'MASTER', 'I': 'INDIVIDUAL', 'B': 'BOND', 'R': 'RESCHEDULED' };
+        const mediums = { 'P': 'IN PERSON', 'V': 'VIDEO', 'T': 'TELEPHONIC' };
+
+        res.status(200).json({
+          success: true,
+          found: true,
+          name: d.AlienName,
+          hearingDate: fmtDate(s?.AdjDate || d.LatestHearingDate),
+          hearingTime: s?.AdjTime || d.LatestHearingTime || null,
+          hearingType: calTypes[s?.CalType || d.LatestCalType] || s?.CalType || null,
+          medium: mediums[s?.HearingMedium] || null,
+          judge: s?.IJ_Name || null,
+          court: s?.HearingLocationAddress ? s.HearingLocationAddress.replace(/\|/g, ', ') : null,
+          webex: s?.IJ_WebExURLLink || null,
+        });
         resolve();
       });
     });
 
     request.on('error', (err) => {
-      console.error('Error:', err.message);
+      console.error('ACIS ERROR:', err.message);
       res.status(200).json({ success: false, error: err.message });
       resolve();
     });
