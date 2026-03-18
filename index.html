@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ACIS Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0a0c10;--s:#13161d;--b:#1e2330;--a:#00d4ff;--a2:#00ff9d;--w:#ffb340;--d:#ff4d6d;--t:#e8eaf0;--m:#6b7280;--f:'DM Sans',sans-serif;--mono:'DM Mono',monospace}
+body{background:var(--bg);color:var(--t);font-family:var(--f);min-height:100vh;padding:1.5rem}
+.app{max-width:1000px;margin:0 auto}
+h1{font-size:22px;font-weight:600;color:#fff;letter-spacing:-.02em}
+h1 span{color:var(--a)}
+.sub{font-size:12px;color:var(--m);margin-top:3px}
+.header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;padding-bottom:1.5rem;margin-bottom:1.5rem;border-bottom:1px solid var(--b)}
+.eoir-tag{background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.25);color:var(--a);font-size:11px;padding:4px 10px;border-radius:20px;font-family:var(--mono)}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.5rem}
+@media(max-width:560px){.grid4{grid-template-columns:1fr 1fr}}
+.card{background:var(--s);border:1px solid var(--b);border-radius:10px;padding:14px 16px}
+.clabel{font-size:11px;color:var(--m);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.cval{font-size:26px;font-weight:600;font-family:var(--mono)}
+.ca{color:var(--a)}.cg{color:var(--a2)}.cr{color:var(--d)}.cw{color:var(--w)}
+.panel{background:var(--s);border:1px solid var(--b);border-radius:12px;margin-bottom:1rem;overflow:hidden}
+.ph{padding:12px 18px;border-bottom:1px solid var(--b);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.pt{font-size:13px;font-weight:500}
+.pb{padding:18px}
+.fg{display:grid;grid-template-columns:2fr 1.2fr 1.6fr auto;gap:10px;align-items:end}
+@media(max-width:680px){.fg{grid-template-columns:1fr 1fr}}
+label{font-size:11px;color:var(--m);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em}
+input,select{background:#0d1018;border:1px solid var(--b);border-radius:8px;color:var(--t);font-family:var(--f);font-size:13px;padding:9px 12px;width:100%;outline:none;transition:border-color .15s}
+input:focus,select:focus{border-color:var(--a)}
+input::placeholder{color:var(--m)}
+select option{background:#0d1018}
+.btn{font-family:var(--f);font-size:13px;font-weight:500;padding:9px 18px;border-radius:8px;border:none;cursor:pointer;white-space:nowrap;transition:opacity .15s}
+.ba{background:var(--a);color:#000}.ba:hover{opacity:.85}
+.bg{background:transparent;border:1px solid var(--b);color:var(--t);font-size:12px;padding:7px 14px}.bg:hover{border-color:var(--m)}
+.br{background:linear-gradient(135deg,var(--a2),var(--a));color:#000;font-weight:600;padding:9px 22px;border-radius:8px;border:none;cursor:pointer;font-family:var(--f);font-size:13px}
+.br:hover{opacity:.85}.br:disabled{opacity:.35;cursor:not-allowed}
+.ow{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:700px}
+th{font-size:11px;color:var(--m);text-transform:uppercase;letter-spacing:.05em;padding:10px 14px;text-align:left;border-bottom:1px solid var(--b);white-space:nowrap}
+td{padding:10px 14px;border-bottom:1px solid #161a24;font-size:13px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px;font-family:var(--mono);white-space:nowrap}
+.bp{background:rgba(255,179,64,.12);color:var(--w);border:1px solid rgba(255,179,64,.25)}
+.bf{background:rgba(0,255,157,.1);color:var(--a2);border:1px solid rgba(0,255,157,.2)}
+.bn{background:rgba(107,114,128,.12);color:var(--m);border:1px solid rgba(107,114,128,.2)}
+.bl{background:rgba(0,212,255,.1);color:var(--a);border:1px solid rgba(0,212,255,.2)}
+.dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.dg{background:var(--a2)}.dw{background:var(--w)}.dr{background:var(--d)}.dm{background:var(--m)}
+.hv{font-family:var(--mono);font-size:12px;font-weight:500}
+.hv.u{color:var(--d)}.hv.s{color:var(--w)}.hv.ok{color:var(--a2)}.hv.na{color:var(--m)}
+.dtag{font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;font-family:var(--mono);margin-left:3px}
+.bw{font-size:11px;padding:4px 9px;border-radius:6px;background:rgba(0,255,157,.08);border:1px solid rgba(0,255,157,.2);color:var(--a2);cursor:pointer;font-family:var(--f)}
+.bw:hover{background:rgba(0,255,157,.15)}
+.bacis{font-size:11px;padding:4px 8px;border-radius:6px;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);color:var(--a);text-decoration:none;white-space:nowrap}
+.bacis:hover{background:rgba(0,212,255,.15)}
+.bdel{font-size:11px;padding:4px 8px;border-radius:6px;background:transparent;border:1px solid transparent;color:var(--m);cursor:pointer}
+.bdel:hover{border-color:var(--d);color:var(--d)}
+.acts{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.empty{text-align:center;padding:3rem;color:var(--m);font-size:13px;line-height:2}
+.pw{display:none;padding:14px 18px;border-bottom:1px solid var(--b)}
+.pt2{display:flex;justify-content:space-between;font-size:12px;color:var(--m);margin-bottom:5px}
+.pbar{height:3px;background:var(--b);border-radius:2px;overflow:hidden}
+.pfill{height:100%;background:linear-gradient(90deg,var(--a2),var(--a));width:0%;transition:width .4s}
+.log{font-family:var(--mono);font-size:11px;color:var(--m);background:#07090d;border-radius:8px;padding:10px 12px;max-height:90px;overflow-y:auto;margin-top:10px;line-height:1.9}
+.log .ok{color:var(--a2)}.log .err{color:var(--d)}.log .info{color:var(--a)}
+.foot{font-size:11px;color:var(--m);text-align:center;padding-top:1.5rem;line-height:1.8;border-top:1px solid var(--b);margin-top:.5rem}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.blink{animation:pulse .9s ease-in-out infinite}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div><h1>ACIS <span>Tracker</span></h1><p class="sub">Consulta automática de audiências · EOIR / U.S. Department of Justice</p></div>
+    <span class="eoir-tag">acis.eoir.justice.gov</span>
+  </div>
+
+  <div class="grid4">
+    <div class="card"><div class="clabel">Total</div><div class="cval ca" id="m0">0</div></div>
+    <div class="card"><div class="clabel">Com audiência</div><div class="cval cg" id="m1">0</div></div>
+    <div class="card"><div class="clabel">Urgentes ≤7d</div><div class="cval cr" id="m2">0</div></div>
+    <div class="card"><div class="clabel">Pendentes</div><div class="cval cw" id="m3">0</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="ph"><span class="pt">Adicionar cliente</span></div>
+    <div class="pb">
+      <div class="fg">
+        <div><label>Nome completo</label><input id="fn" placeholder="Ex: Romario Soares da Silva" onkeydown="if(event.key==='Enter')add()"></div>
+        <div><label>A-Number</label><input id="fa" placeholder="246749387" maxlength="9" onkeydown="if(event.key==='Enter')add()"></div>
+        <div><label>Nacionalidade</label>
+          <select id="fk">
+            <option value="">Selecione...</option>
+            <option>Brazil</option><option>Mexico</option><option>Guatemala</option>
+            <option>Honduras</option><option>El Salvador</option><option>Colombia</option>
+            <option>Venezuela</option><option>Cuba</option><option>Haiti</option>
+            <option>Dominican Republic</option><option>Ecuador</option><option>Peru</option>
+            <option>Nicaragua</option><option>India</option><option>China</option>
+            <option>Philippines</option><option>Jamaica</option><option>Other</option>
+          </select>
+        </div>
+        <div><label>&nbsp;</label><button class="btn ba" onclick="add()">+ Adicionar</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="ph">
+      <span class="pt">Clientes (<span id="cnt">0</span>)</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn bg" onclick="expCSV()">⬇ CSV</button>
+        <button class="br" id="rbtn" onclick="runAll()" disabled>▶ Consultar todos no ACIS</button>
+      </div>
+    </div>
+    <div class="pw" id="pw">
+      <div class="pt2"><span id="plbl">Consultando...</span><span id="ppct">0%</span></div>
+      <div class="pbar"><div class="pfill" id="pf"></div></div>
+      <div class="log" id="lg"></div>
+    </div>
+    <div class="ow">
+      <table>
+        <thead><tr><th>Nome</th><th>A-Number</th><th>País</th><th>Status</th><th>Audiência</th><th>Local / Juiz</th><th>Ações</th></tr></thead>
+        <tbody id="tb"></tbody>
+      </table>
+      <div id="emp" class="empty">Nenhum cliente ainda.<br>Adicione acima e clique <strong style="color:var(--a2)">Consultar todos no ACIS</strong>.</div>
+    </div>
+  </div>
+
+  <div class="foot">Dados públicos · EOIR U.S. Department of Justice · Ferramenta não afiliada ao governo dos EUA</div>
+</div>
+
+<script>
+const KEY='acis_v5';
+let C=JSON.parse(localStorage.getItem(KEY)||'[]');
+let running=false;
+const save=()=>localStorage.setItem(KEY,JSON.stringify(C));
+
+const days=(d)=>{
+  if(!d)return null;
+  const m=d.match(/(\d+)\/(\d+)\/(\d+)/);
+  if(!m)return null;
+  const dt=new Date(+m[3],+m[1]-1,+m[2]);
+  const n=new Date();n.setHours(0,0,0,0);
+  return Math.round((dt-n)/86400000);
+};
+
+const dtag=(d)=>{
+  if(d===null)return'';
+  if(d<0)return`<span class="dtag" style="background:rgba(107,114,128,.2);color:var(--m)">Passou</span>`;
+  if(d<=7)return`<span class="dtag" style="background:rgba(255,77,109,.2);color:var(--d)">${d}d ⚠</span>`;
+  if(d<=30)return`<span class="dtag" style="background:rgba(255,179,64,.15);color:var(--w)">${d}d</span>`;
+  return`<span class="dtag" style="background:rgba(0,255,157,.1);color:var(--a2)">${d}d</span>`;
+};
+
+const hcls=(d)=>d===null?'na':d<=7?'u':d<=30?'s':'ok';
+
+function add(){
+  const name=document.getElementById('fn').value.trim();
+  const raw=document.getElementById('fa').value.trim().replace(/\D/g,'');
+  const nat=document.getElementById('fk').value;
+  if(!name||!raw||!nat){alert('Preencha todos os campos.');return;}
+  if(raw.length<8||raw.length>9){alert('A-Number deve ter 8 ou 9 dígitos.');return;}
+  const anum=raw.padStart(9,'0');
+  if(C.find(c=>c.anum===anum)){alert('A-Number já cadastrado.');return;}
+  C.push({id:Date.now()+'',name,anum,nat,status:'pending',hDate:null,hTime:null,hType:null,court:null,judge:null,checked:null});
+  save();render();
+  ['fn','fa'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fk').value='';
+  document.getElementById('fn').focus();
+}
+
+function del(id){
+  if(!confirm('Remover?'))return;
+  C=C.filter(c=>c.id!==id);save();render();
+}
+
+function render(){
+  const tb=document.getElementById('tb');
+  const emp=document.getElementById('emp');
+  document.getElementById('cnt').textContent=C.length;
+  document.getElementById('rbtn').disabled=!C.length||running;
+  document.getElementById('m0').textContent=C.length;
+  document.getElementById('m1').textContent=C.filter(c=>c.hDate).length;
+  const urg=C.filter(c=>{const d=days(c.hDate);return d!==null&&d>=0&&d<=7;}).length;
+  document.getElementById('m2').textContent=urg;
+  document.getElementById('m3').textContent=C.filter(c=>c.status==='pending').length;
+  if(!C.length){tb.innerHTML='';emp.style.display='block';return;}
+  emp.style.display='none';
+  tb.innerHTML=C.map(c=>{
+    const d=days(c.hDate);
+    const sb=c.status==='found'?'<span class="badge bf"><span class="dot dg"></span>Encontrado</span>':
+      c.status==='notfound'?'<span class="badge bn"><span class="dot dm"></span>Sem data</span>':
+      c.status==='loading'?'<span class="badge bl"><span class="dot dg blink"></span>Consultando...</span>':
+      '<span class="badge bp"><span class="dot dw"></span>Pendente</span>';
+    const hc=c.hDate?`<div class="hv ${hcls(d)}">${c.hDate} ${c.hTime||''} ${dtag(d)}</div><div style="font-size:11px;color:var(--m)">${c.hType||''}</div>`:'<span class="hv na">—</span>';
+    const cc=c.court?`<div style="font-size:12px;max-width:160px;line-height:1.5">${c.court}</div>${c.judge?`<div style="font-size:11px;color:var(--m)">${c.judge}</div>`:''}`:'<span class="hv na">—</span>';
+    const wb=c.hDate?`<button class="bw" onclick="wap('${c.id}')">📋 WhatsApp</button>`:'';
+    return`<tr><td><strong style="font-weight:500">${c.name}</strong>${c.checked?`<div style="font-size:10px;color:var(--m)">${c.checked}</div>`:''}</td><td><span style="font-family:var(--mono);color:var(--a);font-size:12px">${c.anum}</span></td><td style="font-size:12px">${c.nat}</td><td>${sb}</td><td>${hc}</td><td>${cc}</td><td><div class="acts">${wb}<a class="bacis" href="https://acis.eoir.justice.gov/en/" target="_blank">ACIS ↗</a><button class="bdel" onclick="del('${c.id}')">✕</button></div></td></tr>`;
+  }).join('');
+}
+
+function log(msg,t){
+  const b=document.getElementById('lg');
+  b.innerHTML+=`<div class="${t}">${msg}</div>`;
+  b.scrollTop=b.scrollHeight;
+}
+
+async function query(anum,nat){
+  // Chama o backend Vercel Function em /api/lookup
+  try{
+    const r=await fetch(`/api/lookup?alienNumber=${anum}&nationality=${encodeURIComponent(nat)}`);
+    if(r.ok){
+      const j=await r.json();
+      return j;
+    }
+  }catch(e){console.warn('proxy error',e);}
+  return null;
+}
+
+function parse(result){
+  if(!result||!result.success)return null;
+  const data=result.data;
+  if(!data)return null;
+  // Tenta múltiplas estruturas possíveis do JSON do ACIS
+  const node=data?.data?.appearer?.[0]||data?.appearer?.[0]||data?.caseInfo||data?.[0]||data;
+  if(!node||typeof node!=='object')return null;
+  const hDate=node.hearingDate||node.nextHearingDate||node.scheduleDate||node.nextHearing?.date||null;
+  if(!hDate)return{empty:true};
+  return{
+    hDate,
+    hTime:node.hearingTime||node.scheduleTime||node.nextHearing?.time||null,
+    hType:node.hearingType||node.proceedingType||node.nextHearing?.type||null,
+    court:node.courtName||node.court||node.location||node.courtAddress||null,
+    judge:node.judgeName||node.judge||null,
+  };
+}
+
+async function runAll(){
+  if(running)return;
+  running=true;
+  document.getElementById('rbtn').disabled=true;
+  document.getElementById('pw').style.display='block';
+  document.getElementById('lg').innerHTML='';
+  log(`Iniciando consulta de ${C.length} cliente(s)...`,'info');
+
+  for(let i=0;i<C.length;i++){
+    C[i].status='loading';render();
+    log(`Consultando A-${C[i].anum} (${C[i].name})...`,'info');
+
+    const result=await query(C[i].anum,C[i].nat);
+    const parsed=parse(result);
+    C[i].checked=new Date().toLocaleDateString('pt-BR');
+
+    if(parsed&&parsed.hDate){
+      C[i].status='found';C[i].hDate=parsed.hDate;C[i].hTime=parsed.hTime;
+      C[i].hType=parsed.hType;C[i].court=parsed.court;C[i].judge=parsed.judge;
+      log(`✓ ${C[i].name}: ${parsed.hDate} ${parsed.hTime||''}`.trim(),'ok');
+    }else if(parsed&&parsed.empty){
+      C[i].status='notfound';
+      log(`✓ ${C[i].name}: Sem audiência marcada no sistema`,'ok');
+    }else{
+      C[i].status='pending';
+      // Mostra o raw para debug
+      const raw=result?JSON.stringify(result).slice(0,120):'sem resposta';
+      log(`⚠ ${C[i].name}: ${raw}`,'err');
+    }
+
+    const pct=Math.round(((i+1)/C.length)*100);
+    document.getElementById('pf').style.width=pct+'%';
+    document.getElementById('ppct').textContent=pct+'%';
+    document.getElementById('plbl').textContent=`${i+1}/${C.length} consultados`;
+    save();render();
+    await new Promise(r=>setTimeout(r,800));
+  }
+
+  log(`Concluído. ${C.filter(c=>c.hDate).length} audiência(s) encontrada(s).`,'ok');
+  running=false;
+  document.getElementById('rbtn').disabled=false;
+  document.getElementById('rbtn').textContent='↺ Consultar novamente';
+}
+
+function wap(id){
+  const c=C.find(x=>x.id===id);if(!c)return;
+  const msg=`Olá ${c.name.split(' ')[0]} 👋\n\nSua audiência na Corte de Imigração está confirmada:\n\n📅 Data: ${c.hDate}\n⏰ Horário: ${c.hTime||'a confirmar'}\n🏛 Tipo: ${c.hType||'MASTER'}\n📍 Local: ${c.court||'verificar com o escritório'}\n👨‍⚖️ Juiz: ${c.judge||'a confirmar'}\n\nApareça 30 minutos antes.\n\nA-Number: ${c.anum}`;
+  navigator.clipboard.writeText(msg).then(()=>alert('✓ Copiado!')).catch(()=>prompt('Copie:',msg));
+}
+
+function expCSV(){
+  if(!C.length){alert('Nenhum cliente.');return;}
+  const h=['Nome','A-Number','Nacionalidade','Status','Data','Horário','Tipo','Corte','Juiz','Última Consulta'];
+  const rows=C.map(c=>[c.name,c.anum,c.nat,c.status,c.hDate||'',c.hTime||'',c.hType||'',c.court||'',c.judge||'',c.checked||''].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','));
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([[h.join(','),...rows].join('\n')],{type:'text/csv'}));
+  a.download=`acis_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+render();
+</script>
+</body>
+</html>
